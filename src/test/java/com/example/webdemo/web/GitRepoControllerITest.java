@@ -19,16 +19,53 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 public class GitRepoControllerITest {
 
+    private static final String URL = "/getRepository/{owner}/{repo}";
+    private static final String USERNAME = "lukasz-bacic";
+    private static final String ERROR_USERNAME = "lukasz-baci";
+    private static final String REPOSITORY = "java5pozHibernate";
+    private static final String COMMITS = "/commits";
+    private static final String NOT_FOUND = "404 Not Found";
+
     @Autowired
     private MockMvc mockMvc;
 
     @Test
     public void shouldReturnValidResponse() throws Exception {
 
-        mockMvc.perform(get("/getRepository/{owner}/{repo}",
-                "lukasz-bacic", "java5pozHibernate")).andDo(print())
+        mockMvc.perform(get(URL,
+                USERNAME, REPOSITORY)).andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.owner.login")
-                        .value("lukasz-bacic"));
+                        .value(USERNAME));
+    }
+
+    @Test
+    public void shouldReturn404Error() throws Exception {
+
+        mockMvc.perform(get(URL, ERROR_USERNAME, REPOSITORY))
+                .andDo(print())
+                .andExpect(status().is4xxClientError())
+                .andExpect(jsonPath("$")
+                        .value(NOT_FOUND));
+    }
+
+    @Test
+    public void shouldReturnListOfCommits() throws Exception {
+
+        mockMvc.perform(get(URL + COMMITS,
+                USERNAME, REPOSITORY)).andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].commit.author.name")
+                        .value("lbacic"));
+    }
+
+    @Test
+    public void shouldReturn403ErrorWhenAskingForCommits() throws Exception {
+
+        mockMvc.perform(get(URL + COMMITS,
+                ERROR_USERNAME, REPOSITORY)).andDo(print())
+                .andExpect(status().is4xxClientError())
+                .andExpect(jsonPath("$")
+                        .value(NOT_FOUND));
     }
 }
