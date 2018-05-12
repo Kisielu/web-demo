@@ -3,6 +3,7 @@ package com.example.webdemo.service;
 import com.example.webdemo.domain.CommitData;
 import com.example.webdemo.domain.GithubData;
 import com.example.webdemo.errorHandling.SDAException;
+import com.example.webdemo.repository.CommitDataRepository;
 import com.example.webdemo.repository.GithubDataRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,27 +21,29 @@ public class GitRepoService {
 
     private RestTemplate restTemplate;
     private GithubDataRepository githubDataRepository;
+    private CommitDataRepository commitDataRepository;
 
     @Autowired
     public GitRepoService(RestTemplate restTemplate,
-                          GithubDataRepository githubDataRepository) {
+                          GithubDataRepository githubDataRepository,
+                          CommitDataRepository commitDataRepository) {
         this.restTemplate = restTemplate;
         this.githubDataRepository = githubDataRepository;
+        this.commitDataRepository = commitDataRepository;
     }
 
     @Transactional
     public GithubData getRepoByUserAndRepoName(String username, String repositoryName) {
         try {
-            GithubData response;
-            String fullName = String.format("%s/%s", username, repositoryName);
+            String fullName = getFullName(username, repositoryName);
             if (githubDataRepository.existsByFullName(fullName)) {
-                response = githubDataRepository.getByFullName(fullName);
+                return githubDataRepository.getByFullName(fullName);
             } else {
-                response = restTemplate.getForObject(URL,
+                GithubData response = restTemplate.getForObject(URL,
                         GithubData.class, username, repositoryName);
                 githubDataRepository.save(response);
+                return response;
             }
-            return response;
         } catch (HttpClientErrorException ex) {
             GithubData errorResponse = new GithubData();
             errorResponse.setError(ex.getMessage());
@@ -50,13 +53,25 @@ public class GitRepoService {
 
     public List<CommitData> getCommitsByUserAndRepoName(String username, String repositoryName) {
         try {
-            CommitData[] response = restTemplate.getForObject(URL + "/commits",
-                    CommitData[].class, username, repositoryName);
-            List<CommitData> commitDataList = Arrays.asList(response);
-            return commitDataList.size() > 3 ? commitDataList.subList(0,3)
-                    : commitDataList;
+            String fullName = getFullName(username, repositoryName);
+            if (commitDataRepository.existsByUrlContaining(fullName)) {
+                return commitDataRepository.getAllByUrlContaining(fullName);
+            } else {
+                CommitData[] response = restTemplate.getForObject(URL + "/commits",
+                        CommitData[].class, username, repositoryName);
+                List<CommitData> commitDataList = Arrays.asList(response);
+                commitDataList = commitDataList.size() > 3 ? commitDataList.subList(0, 3)
+                        : commitDataList;
+                commitDataRepository.saveAll(commitDataList);
+                return commitDataList;
+            }
         } catch (HttpClientErrorException ex) {
             throw new SDAException(ex.getMessage());
         }
+    }
+
+
+    private static String getFullName(String userName, String repoName) {
+        return String.format("%s/%s", userName, repoName);
     }
 }
