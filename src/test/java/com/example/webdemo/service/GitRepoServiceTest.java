@@ -4,6 +4,7 @@ import com.example.webdemo.domain.CommitData;
 import com.example.webdemo.domain.GithubData;
 import com.example.webdemo.domain.OwnerData;
 import com.example.webdemo.errorHandling.SDAException;
+import com.example.webdemo.repository.GithubDataRepository;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -28,7 +29,14 @@ import static org.mockito.Mockito.when;
 public class GitRepoServiceTest {
 
     private final static String URL = "https://api.github.com/repos/{owner}/{repo}";
+    private final static String USER_NAME = "username";
+    private final static String REPO_NAME = "repoName";
+    private final static String FULL_NAME = USER_NAME + '/' + REPO_NAME;
 
+
+
+    @Mock
+    private GithubDataRepository githubDataRepository;
     @Mock
     private RestTemplate restTemplate;
     @InjectMocks
@@ -39,20 +47,21 @@ public class GitRepoServiceTest {
         // given
         OwnerData ownerData = new OwnerData();
         ownerData.setLogin("test_login");
-        ownerData.setSite_admin(false);
+        ownerData.setSiteAdmin(false);
 
         GithubData githubData = new GithubData();
-        githubData.setFull_name("test_name");
+        githubData.setFullName("test_name");
         githubData.setOwner(ownerData);
         githubData.setDescription("test_description");
 
         when(restTemplate.getForObject(any(String.class), eq(GithubData.class),
                 any(String.class), any(String.class))).thenReturn(githubData);
+        when(githubDataRepository.existsByFullName(FULL_NAME)).thenReturn(false);
         // when
-        GithubData underTest = gitRepoService.getRepoByUserAndRepoName("username",
-                "repoName");
+        GithubData underTest = gitRepoService.getRepoByUserAndRepoName(USER_NAME,
+                REPO_NAME);
         // then
-        assertThat(underTest.getFull_name()).isEqualTo(githubData.getFull_name());
+        assertThat(underTest.getFullName()).isEqualTo(githubData.getFullName());
     }
 
     @Test
