@@ -5,6 +5,7 @@ import com.example.webdemo.domain.GithubData;
 import com.example.webdemo.errorHandling.SDAException;
 import com.example.webdemo.repository.CommitDataRepository;
 import com.example.webdemo.repository.GithubDataRepository;
+import com.example.webdemo.repository.OwnerDataRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,14 +23,17 @@ public class GitRepoService {
     private RestTemplate restTemplate;
     private GithubDataRepository githubDataRepository;
     private CommitDataRepository commitDataRepository;
+    private OwnerDataRepository ownerDataRepository;
 
     @Autowired
     public GitRepoService(RestTemplate restTemplate,
                           GithubDataRepository githubDataRepository,
-                          CommitDataRepository commitDataRepository) {
+                          CommitDataRepository commitDataRepository,
+                          OwnerDataRepository ownerDataRepository) {
         this.restTemplate = restTemplate;
         this.githubDataRepository = githubDataRepository;
         this.commitDataRepository = commitDataRepository;
+        this.ownerDataRepository = ownerDataRepository;
     }
 
     @Transactional
@@ -41,6 +45,9 @@ public class GitRepoService {
             } else {
                 GithubData response = restTemplate.getForObject(URL,
                         GithubData.class, username, repositoryName);
+                if (ownerDataRepository.existsByLogin(response.getOwner().getLogin())) {
+                    response.setOwner(ownerDataRepository.getByLogin(response.getOwner().getLogin()));
+                }
                 githubDataRepository.save(response);
                 return response;
             }
